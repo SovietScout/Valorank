@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -166,7 +167,19 @@ func (c *Client) setState(state State) {
 		return
 	}
 
-	go c.Riot.GetPlayers(c.PlayerChan)
+	go c.GetPlayers()
+}
+
+// Essentially a wrapper
+func (c *Client) GetPlayers() {
+	// Awful error handling; redo
+	defer func() {
+		if err := recover(); err != nil {
+			log.Fatalln(err)
+		}
+	}()
+
+	c.Riot.GetPlayers(c.PlayerChan)
 }
 
 type SessionResp struct {

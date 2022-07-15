@@ -76,7 +76,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Refresh):
 			if m.client.State != client.OFFLINE {
 				m.showRefresh(true)
-				go m.client.Riot.GetPlayers(m.client.PlayerChan)
+				go m.client.GetPlayers()
 			}
 		}
 
