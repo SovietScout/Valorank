@@ -166,7 +166,7 @@ var (
 		"aresriot.aws-rclusterprod-waw1-1.tournament-gp-warsaw-1":          "Warsaw",
 	}
 
-	agentIDs = map[string]*AgentData{
+	agentIDs = map[string]*Data{
 		"dade69b4-4f5a-8528-247b-219e5a1facd6": {Name: "Fade", Colour: "#5c5c5e"},
 		"5f8d3a7f-467b-97f3-062c-13acf203c006": {Name: "Breach", Colour: "#d97a2e"},
 		"f94c3b30-42be-e959-889c-5aa313dba261": {Name: "Raze", Colour: "#d97a2e"},
@@ -189,7 +189,7 @@ var (
 		// "": 									{Name: "Unknown", Colour: "#646464"},
 	}
 
-	ranks = []*RankData{
+	ranks = []*Data{
 		{Name: "Unranked", Colour: "#2e2e2e"},
 		{Name: "Unranked", Colour: "#2e2e2e"},
 		{Name: "Unranked", Colour: "#2e2e2e"},
@@ -245,7 +245,7 @@ func PreAscendantSeasonID(seasonID string) bool {
 	return found
 }
 
-func AgentFromID(AgentID string) *AgentData {
+func AgentFromID(AgentID string) *Data {
 	agent, found := agentIDs[AgentID]
 
 	if found {
@@ -255,7 +255,7 @@ func AgentFromID(AgentID string) *AgentData {
 	}
 }
 
-func StyleAgent(agent *AgentData) string {
+func StyleAgent(agent *Data) string {
 	if agent != nil {
 		return termenv.String(agent.Name).Foreground(p.Color(agent.Colour)).String()
 	} else {

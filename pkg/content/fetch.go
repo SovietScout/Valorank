@@ -32,6 +32,7 @@ type VersionResp struct {
 	} `json:"data"`
 }
 
+/*
 type AgentData struct {
 	Name   string
 	Colour string
@@ -39,5 +40,11 @@ type AgentData struct {
 
 type RankData struct {
 	Name string
+	Colour string
+}
+*/
+
+type Data struct {
+	Name   string
 	Colour string
 }
