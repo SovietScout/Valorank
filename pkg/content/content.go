@@ -256,7 +256,11 @@ func AgentFromID(AgentID string) *AgentData {
 }
 
 func StyleAgent(agent *AgentData) string {
-	return termenv.String(agent.Name).Foreground(p.Color(agent.Colour)).String()
+	if agent != nil {
+		return termenv.String(agent.Name).Foreground(p.Color(agent.Colour)).String()
+	} else {
+		return ""
+	}
 }
 
 func RankFromID(RankID int) string {
