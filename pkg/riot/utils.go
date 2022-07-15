@@ -44,8 +44,6 @@ func (n *NetCL) generateRiotHeaders() (http.Header, error) {
 func SetVars(userPUUID, region string) {
 	UserPUUID = userPUUID
 	Region = region
-
-	SetCurrentSeason()
 }
 
 func SetCurrentSeason() {

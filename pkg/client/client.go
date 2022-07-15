@@ -80,8 +80,9 @@ func (c *Client) ClientReadyLoop(readyChan chan struct{}) {
 			readyChan <- struct{}{}
 
 			content.SetContent()
-
 			riot.SetVars(c.PUUID, c.Region)
+			riot.SetCurrentSeason()
+
 			ticker.Stop()
 
 			// close(readyChan)
