@@ -30,8 +30,9 @@ func NewClient(playerChan chan []*models.Player) *Client {
 }
 
 func (c *Client) ClientReadyLoop(readyChan chan struct{}) {
-	ticker := time.NewTicker(time.Second)
+	defer close(readyChan)
 
+	ticker := time.NewTicker(time.Second)
 	for range ticker.C {
 
 		{
@@ -84,8 +85,6 @@ func (c *Client) ClientReadyLoop(readyChan chan struct{}) {
 			riot.SetCurrentSeason()
 
 			ticker.Stop()
-
-			// close(readyChan)
 		}
 	}
 }
