@@ -1,13 +1,8 @@
 package content
 
 import (
+	"encoding/json"
 	"net/http"
-
-	jsoniter "github.com/json-iterator/go"
-)
-
-var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 func SetContent() {

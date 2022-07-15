@@ -3,12 +3,12 @@ package riot
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"sort"
 	"strconv"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
 	"golang.org/x/sync/singleflight"
@@ -21,7 +21,6 @@ var (
 	Local *NetCL
 
 	requestGroup singleflight.Group
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 type RiotClient interface {

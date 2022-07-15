@@ -1,6 +1,7 @@
 package riot
 
 import (
+	"encoding/json"
 	"net/http"
 	"sync"
 

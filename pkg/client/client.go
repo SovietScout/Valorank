@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
 	"github.com/sovietscout/valorank/pkg/riot"
-	jsoniter "github.com/json-iterator/go"
 )
 
 type Client struct {
@@ -24,8 +24,6 @@ type Client struct {
 
 	Riot	riot.RiotClient
 }
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func NewClient(playerChan chan []*models.Player) *Client {
 	return &Client{State: OFFLINE, PlayerChan: playerChan}
