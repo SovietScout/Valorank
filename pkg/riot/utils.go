@@ -5,7 +5,10 @@ import (
 	"net/http"
 
 	"github.com/sovietscout/valorank/pkg/content"
+	"golang.org/x/sync/singleflight"
 )
+
+var requestGroup singleflight.Group
 
 func (n *NetCL) GetRiotHeaders() http.Header {
 	v, err, _ := requestGroup.Do("local", func() (interface{}, error) {

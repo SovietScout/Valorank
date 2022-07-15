@@ -11,7 +11,6 @@ import (
 
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
-	"golang.org/x/sync/singleflight"
 )
 
 var (
@@ -19,8 +18,6 @@ var (
 	Region    string
 
 	Local *NetCL
-
-	requestGroup singleflight.Group
 )
 
 type RiotClient interface {
