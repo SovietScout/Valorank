@@ -22,6 +22,7 @@ var (
 
 func GeneratePartyIcons(players []*models.Player) []string {
 	ch := newIcon()
+	defer close(ch)
 
 	var tempPIDs = map[string]struct{}{}
 	var dupPIDs = map[string]string{}
@@ -52,7 +53,7 @@ func newIcon() chan string {
 	ch := make(chan string)
 
 	go func() {
-		defer close(ch)
+		// defer close(ch)
 		for _, col := range partyIconColours {
 			ch <- symbol.Foreground(col).String()
 		}

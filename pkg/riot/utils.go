@@ -46,9 +46,9 @@ func SetVars(userPUUID, region string) {
 	Region = region
 }
 
-func SetCurrentSeason() {
+func SetCurrentSeason() error {
 	if content.CurrentSeasonID != "" {
-		return
+		return nil
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, GetSharedURL("/content-service/v3/content"), nil)
@@ -56,7 +56,7 @@ func SetCurrentSeason() {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return // Don't know what the hell to do
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -68,6 +68,8 @@ func SetCurrentSeason() {
 			content.CurrentSeasonID = season.ID
 		}
 	}
+
+	return nil
 }
 
 type EntitlementResp struct {
@@ -94,5 +96,3 @@ func GetPDURL(endpoint string) string {
 func GetSharedURL(endpoint string) string {
 	return "https://shared." + Region + ".a.pvp.net" + endpoint
 }
-
-
