@@ -39,20 +39,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Game is ready to accept requests
 	case clientReadyMsg:
-		// m.keys.Refresh.SetEnabled(true)
 		cmds = append(cmds, m.waitForStateChange(m.clientStateChan))
 
 
 	// Game state has changed
 	case clientStateMsg:
-		cmds = append(cmds, m.waitForStateChange(m.clientStateChan))
-
 		if client.State(msg) == client.OFFLINE {
 			m.showRefresh(false)
 			m.table = m.table.Clear()
 		} else {
 			m.showRefresh(true)
-			cmds = append(cmds, m.waitForPlayers(m.playerChan))
+			cmds = append(cmds, tea.Batch(
+				m.waitForPlayers(m.playerChan),
+				m.waitForStateChange(m.clientStateChan),
+			))
 		}
 
 
@@ -60,7 +60,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case []*models.Player:
 		m.showRefresh(false)
 		m.table, cmd = m.table.Update(msg)
-		cmds = append(cmds, cmd, m.waitForPlayers(m.playerChan))
+		cmds = append(cmds, tea.Batch(
+			cmd,
+			m.waitForPlayers(m.playerChan),
+		))
 
 
 	// Apparently not supported by Windows™
