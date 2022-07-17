@@ -21,8 +21,8 @@ var (
 )
 
 func GeneratePartyIcons(players []*models.Player) []string {
-	ch := newIcon()
-	defer close(ch)
+	stopCh := make(chan struct{})
+	iconCh := newIcon(stopCh)
 
 	var tempPIDs = map[string]struct{}{}
 	var dupPIDs = map[string]string{}
@@ -30,7 +30,7 @@ func GeneratePartyIcons(players []*models.Player) []string {
 	// First pass: check which party IDs are duplicates (2+ players in the same party)
 	for _, player := range players {
 		if _, ok := tempPIDs[player.PartyID]; ok {
-			dupPIDs[player.PartyID] = <- ch
+			dupPIDs[player.PartyID] = <- iconCh
 		}
 
 		tempPIDs[player.PartyID] = struct{}{}
@@ -46,16 +46,24 @@ func GeneratePartyIcons(players []*models.Player) []string {
 		}
 	}
 
+	stopCh <- struct{}{}
+	close(stopCh)
+
 	return partyIcons
 }
 
-func newIcon() chan string {
+func newIcon(stopCh chan struct{}) chan string {
 	ch := make(chan string)
 
 	go func() {
-		// defer close(ch)
 		for _, col := range partyIconColours {
-			ch <- symbol.Foreground(col).String()
+			select {
+			case <-stopCh:
+				close(ch)
+				return
+			default:
+				ch <- symbol.Foreground(col).String()
+			}
 		}
 	}()
 
