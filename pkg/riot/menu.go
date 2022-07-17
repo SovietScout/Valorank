@@ -20,7 +20,7 @@ func (r *Menu) GetPlayers(playerChan chan <- []*models.Player) {
 	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/parties/" + userPartyID), nil)
 	req.Header = Local.GetRiotHeaders()
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}
@@ -71,7 +71,7 @@ func getUserPartyID() string {
 	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/players/"+UserPUUID), nil)
 	req.Header = Local.GetRiotHeaders()
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return ""
 	}

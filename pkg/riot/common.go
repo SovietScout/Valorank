@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
@@ -18,6 +19,8 @@ var (
 	Region    string
 
 	Local *NetCL
+
+	client = http.Client{Timeout: 10 * time.Second}
 )
 
 type RiotClient interface {
@@ -29,7 +32,7 @@ func SetRank(player *models.Player) error {
 	req, _ := http.NewRequest(http.MethodGet, GetPDURL("/mmr/v1/players/"+player.SubjectID), nil)
 	req.Header = Local.GetRiotHeaders()
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -81,22 +84,6 @@ func SetRank(player *models.Player) error {
 }
 
 func SetPartyID(players []*models.Player) error {
-	/*
-		req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/players/"+player.SubjectID), nil)
-		req.Header = Local.GetRiotHeaders()
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		data := new(FetchPlayerResp)
-		json.NewDecoder(resp.Body).Decode(data)
-
-		player.PartyID = data.CurrentPartyID
-	*/
-
 	resp, err := Local.GET("/chat/v4/presences")
 	if err != nil {
 		return err
@@ -138,7 +125,7 @@ func SetNames(players []*models.Player) error {
 	req, _ := http.NewRequest(http.MethodPut, GetPDURL("/name-service/v2/players"), bytes.NewBuffer(jsonPUUIDs))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

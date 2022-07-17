@@ -54,7 +54,7 @@ func SetCurrentSeason() error {
 	req, _ := http.NewRequest(http.MethodGet, GetSharedURL("/content-service/v3/content"), nil)
 	req.Header = Local.GetRiotHeaders()
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

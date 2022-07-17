@@ -21,7 +21,7 @@ func (r *Ingame) GetPlayers(playerChan chan<- []*models.Player) {
 	reqID, _ := http.NewRequest(http.MethodGet, GetGLZURL("/core-game/v1/players/"+UserPUUID), nil)
 	reqID.Header = Local.GetRiotHeaders()
 
-	respID, err := http.DefaultClient.Do(reqID)
+	respID, err := client.Do(reqID)
 	if err != nil {
 		return
 	}
@@ -34,7 +34,7 @@ func (r *Ingame) GetPlayers(playerChan chan<- []*models.Player) {
 	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/core-game/v1/matches/"+dataID.MatchID), nil)
 	req.Header = Local.GetRiotHeaders()
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}
