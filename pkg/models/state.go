@@ -1,4 +1,4 @@
-package client
+package models
 
 type State string
 

@@ -2,11 +2,10 @@ package valorank
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sovietscout/valorank/pkg/client"
 	"github.com/sovietscout/valorank/pkg/models"
 )
 
-func (m *model) waitForStateChange(ret chan client.State) tea.Cmd {
+func (m *model) waitForStateChange(ret chan models.State) tea.Cmd {
 	if !m.client.ClientStateLoopOn {
 		go m.client.ClientStateChangeLoop(ret)
 	}
@@ -37,6 +36,6 @@ func (m *model) waitForPlayers(ret chan []*models.Player) tea.Cmd {
 	}
 }
 
-type clientStateMsg client.State
+type clientStateMsg models.State
 type gameStateMsg bool
 type clientReadyMsg struct{}

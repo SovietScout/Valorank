@@ -44,7 +44,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Game state has changed
 	case clientStateMsg:
-		if client.State(msg) == client.OFFLINE {
+		if models.State(msg) == models.OFFLINE {
 			m.showRefresh(false)
 			m.table = m.table.Clear()
 		} else {
@@ -77,7 +77,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Quit):
 			cmds = append(cmds, tea.Quit)
 		case key.Matches(msg, DefaultKeyMap.Refresh):
-			if m.client.State != client.OFFLINE {
+			if m.client.State != models.OFFLINE {
 				m.showRefresh(true)
 				go m.client.GetPlayers()
 			}

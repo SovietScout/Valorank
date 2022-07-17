@@ -11,7 +11,7 @@ import (
 type model struct {
 	client          *client.Client
 	gameStateChan   chan (bool)
-	clientStateChan chan (client.State)
+	clientStateChan chan (models.State)
 	playerChan		chan ([]*models.Player)
 	table			playertable.Model
 	keys            KeyMap
@@ -32,7 +32,7 @@ func NewModel() *model {
 	return &model{
 		client:          client.NewClient(playerChan),
 		gameStateChan:   make(chan bool),
-		clientStateChan: make(chan client.State),
+		clientStateChan: make(chan models.State),
 		playerChan:		 playerChan,
 		table:			 playertable.New(),
 		keys:            DefaultKeyMap,

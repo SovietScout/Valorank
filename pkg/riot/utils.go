@@ -66,6 +66,7 @@ func SetCurrentSeason() error {
 	for _, season := range data.Seasons {
 		if season.IsActive && season.Type == "act" {
 			content.CurrentSeasonID = season.ID
+			break
 		}
 	}
 

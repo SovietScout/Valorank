@@ -246,13 +246,11 @@ func PreAscendantSeasonID(seasonID string) bool {
 }
 
 func AgentFromID(AgentID string) *Data {
-	agent, found := agentIDs[AgentID]
-
-	if found {
+	if agent, found := agentIDs[AgentID]; found {
 		return agent
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func StyleAgent(agent *Data) string {
@@ -282,18 +280,18 @@ func ColourFromPlayer(player *models.Player) string {
 	return name.Foreground(oppColour).String()
 }
 
-func ColourFromState(state string) string {
-	s := termenv.String(state)
+func ColourFromState(state models.State) string {
+	s := termenv.String(string(state))
 	var stateCol termenv.Color
 
 	switch state {
-	case "Offline":
+	case models.OFFLINE:
 		stateCol = offlineColour
-	case "In Menu":
+	case models.MENU:
 		stateCol = menuColour
-	case "In Pregame":
+	case models.PREGAME:
 		stateCol = pregameColour
-	case "In Game":
+	case models.INGAME:
 		stateCol = ingameColour
 	}
 

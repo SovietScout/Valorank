@@ -27,7 +27,7 @@ func (m *model) View() string {
 	return doc.String()
 }
 
-func (m *model) infoLine() (view string) {
+func (m *model) infoLine() string {
 	name := content.NAME + " " + content.VERSION + " |"
 	help := m.helpLine()
 	state := m.stateLine()
@@ -44,11 +44,11 @@ func (m *model) infoLine() (view string) {
 	return line
 }
 
-func (m *model) stateLine() (view string) {
+func (m *model) stateLine() string {
 	doc := strings.Builder{}
 
 	doc.WriteString("Status: ")
-	doc.WriteString(content.ColourFromState(string(m.client.State)))
+	doc.WriteString(content.ColourFromState(m.client.State))
 
 	if m.client.Riot != nil {
 		if server := content.ServerFromGamePod(m.client.Riot.GetGamePod()); server != "" {
@@ -61,7 +61,7 @@ func (m *model) stateLine() (view string) {
 	return doc.String()
 }
 
-func (m *model) helpLine() (view string) {
+func (m *model) helpLine() string {
 	hl := "| "
 
 	if showRefresh {
@@ -73,7 +73,7 @@ func (m *model) helpLine() (view string) {
 	return hl
 }
 
-func (m *model) tableLines() (view string) {
+func (m *model) tableLines() string {
 	m.table.Table = m.table.Table.WithTargetWidth(Width)
 	return m.table.View()
 }
