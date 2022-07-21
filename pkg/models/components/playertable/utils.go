@@ -52,19 +52,21 @@ func GeneratePartyIcons(players []*models.Player) []string {
 	return partyIcons
 }
 
-func newIcon(stopCh chan struct{}) chan string {
-	ch := make(chan string)
+func newIcon(stopCh <-chan struct{}) <- chan string {
+	ch := make(chan string, 1)
 
 	go func() {
+		loop:
 		for _, col := range partyIconColours {
 			select {
 			case <-stopCh:
-				close(ch)
-				return
+				break loop
 			default:
 				ch <- symbol.Foreground(col).String()
 			}
 		}
+
+		close(ch)
 	}()
 
 	return ch

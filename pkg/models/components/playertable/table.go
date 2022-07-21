@@ -96,10 +96,9 @@ func (m Model) Clear() Model {
 func generateRowsFromData(players []*models.Player) []table.Row {
 	var icons = GeneratePartyIcons(players)
 
-	rows := []table.Row{}
-
 	lastPlayerTeam := true
 
+	rows := []table.Row{}
 	for i, player := range players {
 		if lastPlayerTeam != player.Ally {
 			rows = append(rows, table.NewRow(table.RowData{}))
