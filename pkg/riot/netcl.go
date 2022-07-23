@@ -3,6 +3,7 @@ package riot
 import (
 	"crypto/tls"
 	"net/http"
+	"time"
 )
 
 type NetCL struct {
@@ -19,7 +20,7 @@ func NewNetCL(port, pw, pc string) *NetCL {
     }
 
 	return &NetCL{
-		http: &http.Client{Transport: tr},
+		http: &http.Client{Transport: tr, Timeout: 5 * time.Second},
 
 		port: port,
 		pw: pw,
