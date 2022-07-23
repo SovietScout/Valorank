@@ -3,6 +3,7 @@ package riot
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/sovietscout/valorank/pkg/models"
@@ -57,7 +58,7 @@ func (r *Ingame) GetPlayers(playerChan chan<- []*models.Player) {
 			p := &models.Player{
 				SubjectID: player.Subject,
 				Level:     player.PlayerIdentity.AccountLevel,
-				Agent:     player.CharacterID,
+				Agent:     strings.ToLower(player.CharacterID),
 				Ally:      player.TeamID == "Blue",
 				Incognito: player.PlayerIdentity.Incognito,
 			}
