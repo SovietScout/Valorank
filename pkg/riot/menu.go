@@ -10,27 +10,28 @@ import (
 
 type Menu struct{}
 
-func (r *Menu) GetGamePod() string {
-	return ""
-}
+func (r *Menu) GetMatch() models.Match {
+	match := models.Match{State: models.MENU}
 
-func (r *Menu) GetPlayers(playerChan chan <- []*models.Player) {
 	userPartyID := getUserPartyID()
 
-	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/parties/" + userPartyID), nil)
+	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/parties/"+userPartyID), nil)
 	req.Header = Local.GetRiotHeaders()
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		match.Err = err
+		return match
 	}
 	defer resp.Body.Close()
 
 	data := new(FetchPartyResp)
 	json.NewDecoder(resp.Body).Decode(data)
 
-	var wg sync.WaitGroup
+	match.GamePodID = ""
+
 	playerRecv := make(chan *models.Player, len(data.Members))
+	var wg sync.WaitGroup
 
 	// Set players and their rank infos
 	for _, player := range data.Members {
@@ -41,9 +42,9 @@ func (r *Menu) GetPlayers(playerChan chan <- []*models.Player) {
 
 			p := &models.Player{
 				SubjectID: player.Subject,
-				PartyID: partyID,
-				Level: player.PlayerIdentity.AccountLevel,
-				Ally: true,
+				PartyID:   partyID,
+				Level:     player.PlayerIdentity.AccountLevel,
+				Ally:      true,
 			}
 
 			SetRank(p)
@@ -56,15 +57,15 @@ func (r *Menu) GetPlayers(playerChan chan <- []*models.Player) {
 	close(playerRecv)
 
 	// Populate players array
-	players := []*models.Player{}
+	// players := []*models.Player{}
 	for player := range playerRecv {
-		players = append(players, player)
+		match.Players = append(match.Players, player)
 	}
 
-	SetNames(players)
-	SetLevelSort(players)
+	SetNames(match.Players)
+	SetLevelSort(match.Players)
 
-	playerChan <- players
+	return match
 }
 
 func getUserPartyID() string {

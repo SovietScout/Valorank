@@ -13,18 +13,17 @@ type Ingame struct {
 	GamePod string
 }
 
-func (r *Ingame) GetGamePod() string {
-	return r.GamePod
-}
+func (r *Ingame) GetMatch() models.Match {
+	match := models.Match{State: models.INGAME}
 
-func (r *Ingame) GetPlayers(playerChan chan<- []*models.Player) {
 	// Current Match ID
 	reqID, _ := http.NewRequest(http.MethodGet, GetGLZURL("/core-game/v1/players/"+UserPUUID), nil)
 	reqID.Header = Local.GetRiotHeaders()
 
 	respID, err := client.Do(reqID)
 	if err != nil {
-		return
+		match.Err = err
+		return match
 	}
 	defer respID.Body.Close()
 
@@ -37,17 +36,18 @@ func (r *Ingame) GetPlayers(playerChan chan<- []*models.Player) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		match.Err = err
+		return match
 	}
 	defer resp.Body.Close()
 
 	data := new(CoregameFetchMatchResp)
 	json.NewDecoder(resp.Body).Decode(data)
 
-	var wg sync.WaitGroup
-	playerRecv := make(chan *models.Player, len(data.Players))
+	match.GamePodID = data.GamePodID
 
-	r.GamePod = data.GamePodID
+	playerRecv := make(chan *models.Player, len(data.Players))
+	var wg sync.WaitGroup
 
 	for _, player := range data.Players {
 		wg.Add(1)
@@ -73,17 +73,17 @@ func (r *Ingame) GetPlayers(playerChan chan<- []*models.Player) {
 	close(playerRecv)
 
 	// Populate players array
-	players := []*models.Player{}
+	// players := []*models.Player{}
 	for player := range playerRecv {
-		players = append(players, player)
+		match.Players = append(match.Players, player)
 	}
 
-	SetNames(players)
-	SetPartyID(players)
-	SetLevelSort(players)
-	SetTeamSort(players)
+	SetNames(match.Players)
+	SetPartyID(match.Players)
+	SetLevelSort(match.Players)
+	SetTeamSort(match.Players)
 
-	playerChan <- players
+	return match
 }
 
 type CoregameFetchMatchResp struct {

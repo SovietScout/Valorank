@@ -24,8 +24,7 @@ var (
 )
 
 type RiotClient interface {
-	GetPlayers(playerChan chan<- []*models.Player)
-	GetGamePod() string
+	GetMatch() models.Match
 }
 
 func SetRank(player *models.Player) error {
