@@ -7,7 +7,7 @@ import (
 
 var (
 	symbol = termenv.String("■")
-	p = termenv.ColorProfile()
+	p      = termenv.ColorProfile()
 
 	partyIconColours = []termenv.Color{
 		p.Color("#E34343"),
@@ -20,9 +20,9 @@ var (
 	}
 )
 
-func GeneratePartyIcons(players []*models.Player) []string {
-	stopCh := make(chan struct{})
-	iconCh := newIcon(stopCh)
+func GenerateParties(players []*models.Player) map[string]string {
+	recvCh := make(chan bool, 1)
+	iconCh := newIcon(recvCh)
 
 	var tempPIDs = map[string]struct{}{}
 	var dupPIDs = map[string]string{}
@@ -30,40 +30,45 @@ func GeneratePartyIcons(players []*models.Player) []string {
 	// First pass: check which party IDs are duplicates (2+ players in the same party)
 	for _, player := range players {
 		if _, ok := tempPIDs[player.PartyID]; ok {
-			dupPIDs[player.PartyID] = <- iconCh
+			recvCh <- true
+			dupPIDs[player.PartyID] = <-iconCh
 		}
 
 		tempPIDs[player.PartyID] = struct{}{}
 	}
 
 	// Second pass: assign party icons if party ID is duplicate
-	var partyIcons []string
-	for _, player := range players {
-		if icon, ok := dupPIDs[player.PartyID]; ok {
-			partyIcons = append(partyIcons, icon)
-		} else {
-			partyIcons = append(partyIcons, "")
+	/*
+		var partyIcons []string
+		for _, player := range players {
+			if icon, ok := dupPIDs[player.PartyID]; ok {
+				partyIcons = append(partyIcons, icon)
+			} else {
+				partyIcons = append(partyIcons, "")
+			}
 		}
-	}
+	*/
 
-	stopCh <- struct{}{}
-	close(stopCh)
+	recvCh <- false
+	close(recvCh)
 
-	return partyIcons
+	return dupPIDs
 }
 
-func newIcon(stopCh <-chan struct{}) <- chan string {
+func newIcon(recvCh <-chan bool) <-chan string {
 	ch := make(chan string, 1)
 
 	go func() {
-		loop:
-		for _, col := range partyIconColours {
-			select {
-			case <-stopCh:
-				break loop
-			default:
-				ch <- symbol.Foreground(col).String()
+		index := 0
+
+		for send := range recvCh {
+			if send {
+				ch <- symbol.Foreground(partyIconColours[index]).String()
+			} else {
+				break
 			}
+
+			index++
 		}
 
 		close(ch)

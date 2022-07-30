@@ -72,8 +72,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	switch msg := msg.(type) {
-	case []*models.Player:
-		m.Table = m.Table.WithRows(generateRowsFromData(msg))
+	case models.Match:
+		m.Table = m.Table.WithRows(generateRowsFromData(msg.Players))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -94,21 +94,20 @@ func (m Model) Clear() Model {
 }
 
 func generateRowsFromData(players []*models.Player) []table.Row {
-	var icons = GeneratePartyIcons(players)
-
-	lastPlayerTeam := true
+	var playerParties = GenerateParties(players)
+	var lastPlayerTeam bool
 
 	rows := []table.Row{}
 	for i, player := range players {
-		if lastPlayerTeam != player.Ally {
+		// Add empty row on team change
+		if i != 0 && lastPlayerTeam != player.Ally {
 			rows = append(rows, table.NewRow(table.RowData{}))
 		}
-
 		lastPlayerTeam = player.Ally
 
 		// Player name based on incognito and whether agent has been selected
 		agent := content.AgentFromID(player.Agent)
-		if player.Incognito && player.Name == "" {
+		if player.Incognito {
 			if agent != nil {
 				player.Name = agent.Name
 			} else {
@@ -116,8 +115,13 @@ func generateRowsFromData(players []*models.Player) []table.Row {
 			}
 		}
 
+		var partyIcon string
+		if icon, ok := playerParties[player.PartyID]; ok {
+			partyIcon = icon
+		}
+
 		row := table.NewRow(table.RowData{
-			cParty: icons[i],
+			cParty: partyIcon,
 			cAgent: content.StyleAgent(agent),
 			cName:  content.ColourFromPlayer(player),
 			cRank:  content.RankFromID(player.Rank),
