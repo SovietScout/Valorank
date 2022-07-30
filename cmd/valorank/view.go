@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sovietscout/valorank/pkg/content"
+	"github.com/sovietscout/valorank/pkg/models"
 	"golang.org/x/term"
 )
 
@@ -15,6 +16,7 @@ var (
 	faintStyle = lipgloss.NewStyle().Faint(true)
 	centerStyle = lipgloss.NewStyle().Align(lipgloss.Center)
 
+	gamePod string
 	showRefresh = false
 )
 
@@ -50,13 +52,11 @@ func (m *model) stateLine() string {
 	doc.WriteString("Status: ")
 	doc.WriteString(content.ColourFromState(m.client.State))
 
-	if m.client.Riot != nil {
-		if server := content.ServerFromGamePod(m.client.Riot.GetGamePod()); server != "" {
-			doc.WriteString(" (")
-			doc.WriteString(server)
-			doc.WriteString(")")
-		}
- 	}
+	switch m.client.State {
+	case models.PREGAME:
+	case models.INGAME:
+		doc.WriteString(" (" + gamePod + ")")
+	}
 
 	return doc.String()
 }
@@ -80,6 +80,10 @@ func (m *model) tableLines() string {
 
 func (m *model) showRefresh(show bool) {
 	showRefresh = show
+}
+
+func (m *model) setGamePodID(matchGPID string) {
+	gamePod = content.ServerFromGamePod(matchGPID)
 }
 
 func max(a, b string) int {

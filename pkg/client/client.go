@@ -1,14 +1,10 @@
 package client
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
-	"log"
-	"os"
-	"path/filepath"
 	"time"
-
-	"strings"
 
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
@@ -16,121 +12,82 @@ import (
 )
 
 type Client struct {
-	State  State
-	Region string
-	PUUID  string
+	IsRunning bool
+	State     models.State
 
-	ClientStateLoopOn bool
-	PlayerChan chan ([]*models.Player)
+	Riot riot.RiotClient
 
-	Riot	riot.RiotClient
+	matchChan chan models.Match
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func NewClient(playerChan chan []*models.Player) *Client {
-	return &Client{State: OFFLINE, PlayerChan: playerChan}
+func NewClient(matchChan chan models.Match) *Client {
+	return &Client{State: models.OFFLINE, matchChan: matchChan}
 }
 
-func (c *Client) ClientReadyLoop(readyChan chan struct{}) {
-	defer close(readyChan)
+func (c *Client) Start(ret chan models.State) {
+	c.IsRunning = true
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 
-	ticker := time.NewTicker(time.Second)
-	for range ticker.C {
+	go func() {
+		riot.Local = riot.NewNetCL(lockfileData())
+		riot.SetVars(getRiotVars())
 
-		{
-			// Set Riot Client
-			data_bytes, err := os.ReadFile(filepath.Join(os.Getenv("LOCALAPPDATA"), "Riot Games/Riot Client/Config/lockfile"))
-			if (err != nil) {
-				continue
-			}
+		content.SetContent()
+		riot.SetCurrentSeason()
 
-			lockfile := strings.Split(string(data_bytes), ":")
+		c.ClientStateChangeLoop(ret)
+	}()
+}
 
-			riot.Local = riot.NewNetCL(
-				lockfile[2],
-				lockfile[3],
-				lockfile[4],
-			)
-		}
-
-		{
-			// Set PUUID
-			if resp, err := riot.Local.GET("/chat/v1/session"); err == nil {
-				data := new(SessionResp)
-				json.NewDecoder(resp.Body).Decode(data)
-	
-				c.PUUID = data.Puuid
-			}
-		}
-
-		{
-			// Set region
-			if resp, err := riot.Local.GET("/product-session/v1/external-sessions"); err == nil {
-				data := map[string]FetchSessionResp{}
-				json.NewDecoder(resp.Body).Decode(&data)
-
-				for _, val := range data {
-					for _, arg := range val.LaunchConfiguration.Arguments {
-						if strings.HasPrefix(arg, "-ares-deployment") {
-							c.Region = arg[strings.Index(arg, "=") + 1:]
-						}
-					}
-				}
-			}
-		}
-
-		if riot.Local != nil && c.PUUID != "" && c.Region != "" {
-			readyChan <- struct{}{}
-
-			content.SetContent()
-			riot.SetVars(c.PUUID, c.Region)
-			riot.SetCurrentSeason()
-
-			ticker.Stop()
-		}
-	}
+func (c *Client) Stop() {
+	c.cancel()
+	c.setState(models.OFFLINE)
+	c.IsRunning = false
 }
 
 // Checks every 1 second(s) to see if state has updated
-func (c *Client) ClientStateChangeLoop(ret chan State) {
+func (c *Client) ClientStateChangeLoop(ret chan models.State) {
 	ticker := time.NewTicker(time.Second)
 	previousState := c.State
 
-	c.ClientStateLoopOn = true
+	for {
+		select {
+		case <-ticker.C:
+			if currentState := c.getPresence(); currentState != previousState {
+				c.setState(currentState)
+				previousState = currentState
 
-	for range ticker.C {
-		var currentState = c.getPresence()
+				ret <- currentState
+			}
 
-		if currentState != previousState {
-			c.setState(currentState)
-			previousState = currentState
-
-			ret <- currentState
+		case <-c.ctx.Done():
+			ticker.Stop()
+			return
 		}
 	}
 }
 
-func (c *Client) getPresence() State {
-	if riot.Local == nil {
-		return OFFLINE
-	}
-
+func (c *Client) getPresence() models.State {
 	resp, err := riot.Local.GET("/chat/v4/presences")
 	if err != nil {
-		return OFFLINE
+		return models.OFFLINE
 	}
+	defer resp.Body.Close()
 
 	data := new(riot.PresencesResp)
 	json.NewDecoder(resp.Body).Decode(data)
-	resp.Body.Close()
 
 	if len(data.Presences) == 0 {
-		return OFFLINE
+		return models.OFFLINE
 	}
 
-	state := OFFLINE
+	state := models.OFFLINE
 
 	for _, presence := range data.Presences {
-		if presence.Product == "valorant" && presence.Puuid == c.PUUID {
+		if presence.Product == "valorant" && presence.Puuid == riot.UserPUUID {
 			private_bytes, _ := base64.StdEncoding.DecodeString(presence.Private)
 
 			data := new(riot.PresencesPrivate)
@@ -138,11 +95,11 @@ func (c *Client) getPresence() State {
 
 			switch data.SessionLoopState {
 			case "MENUS":
-				state = MENU
+				state = models.MENU
 			case "PREGAME":
-				state = PREGAME
+				state = models.PREGAME
 			case "INGAME":
-				state = INGAME
+				state = models.INGAME
 			}
 
 			break
@@ -152,38 +109,31 @@ func (c *Client) getPresence() State {
 	return state
 }
 
-func (c *Client) setState(state State) {
+func (c *Client) setState(state models.State) {
 	c.State = state
 
 	switch state {
-	case MENU:
+	case models.MENU:
 		c.Riot = new(riot.Menu)
-	case PREGAME:
+	case models.PREGAME:
 		c.Riot = new(riot.Pregame)
-	case INGAME:
+	case models.INGAME:
 		c.Riot = new(riot.Ingame)
 	default:
-		c.Riot = nil	// When Offline
+		c.Riot = nil // When Offline
 		return
 	}
 
-	go c.GetPlayers()
+	go c.GetMatch()
 }
 
 // Essentially a wrapper
-func (c *Client) GetPlayers() {
-	// Awful error handling; redo
-	defer func() {
-		if err := recover(); err != nil {
-			log.Fatalln(err)
-		}
-	}()
-
-	c.Riot.GetPlayers(c.PlayerChan)
+func (c *Client) GetMatch() {
+	c.matchChan <- c.Riot.GetMatch()
 }
 
 type SessionResp struct {
-	Puuid     string `json:"puuid"`
+	Puuid string `json:"puuid"`
 }
 
 type FetchSessionResp struct {

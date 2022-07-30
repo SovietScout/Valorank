@@ -9,33 +9,33 @@ import (
 )
 
 type model struct {
-	client          *client.Client
-	gameStateChan   chan (bool)
-	clientStateChan chan (models.State)
-	playerChan		chan ([]*models.Player)
-	table			playertable.Model
-	keys            KeyMap
-	help            help.Model
+	client               *client.Client
+	applicationStateChan chan (bool)
+	clientStateChan      chan (models.State)
+	matchChan            chan (models.Match)
+	table                playertable.Model
+	keys                 KeyMap
+	help                 help.Model
 }
 
 func (m model) Init() tea.Cmd {
 	go m.GameState()
 
 	return tea.Batch(
-		m.waitForGameState(m.gameStateChan),
+		m.waitForApplicationState(m.applicationStateChan),
 	)
 }
 
 func NewModel() *model {
-	playerChan := make(chan []*models.Player)
+	matchChan := make(chan models.Match)
 
 	return &model{
-		client:          client.NewClient(playerChan),
-		gameStateChan:   make(chan bool),
-		clientStateChan: make(chan models.State),
-		playerChan:		 playerChan,
-		table:			 playertable.New(),
-		keys:            DefaultKeyMap,
-		help:            help.New(),
+		client:               client.NewClient(matchChan),
+		applicationStateChan: make(chan bool),
+		clientStateChan:      make(chan models.State),
+		matchChan:            matchChan,
+		table:                playertable.New(),
+		keys:                 DefaultKeyMap,
+		help:                 help.New(),
 	}
 }
