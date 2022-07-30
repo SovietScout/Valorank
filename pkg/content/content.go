@@ -271,7 +271,7 @@ func ServerFromGamePod(gamePod string) string {
 }
 
 func ColourFromPlayer(player *models.Player) string {
-	name := termenv.String(" " + player.Name)
+	name := termenv.String(player.Name)
 
 	if player.Ally {
 		return name.Foreground(teamColour).String()
