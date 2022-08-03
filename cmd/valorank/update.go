@@ -28,9 +28,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.client.Start(m.clientStateChan)
 			}
 
-			cmds = append(cmds,
+			cmds = append(cmds, m.waitForStateChange(m.clientStateChan),
 				m.waitForApplicationState(m.applicationStateChan),
-				m.waitForStateChange(m.clientStateChan),
 			)
 		} else {
 			if m.client.IsRunning {
@@ -79,6 +78,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Quit):
 			cmds = append(cmds, tea.Quit)
 		case key.Matches(msg, DefaultKeyMap.Refresh):
+			log.Println("Manually refreshed")
 			if m.client.State != models.OFFLINE {
 				m.showRefresh(true)
 				go m.client.GetMatch()
@@ -94,6 +94,8 @@ func (m *model) GameState() {
 	var lockfileViable bool
 
 	sendState := func(state bool) {
+		log.Printf("Lockfile present: %t\n", state)
+
 		lockfileViable = state
 		m.applicationStateChan <- state
 	}

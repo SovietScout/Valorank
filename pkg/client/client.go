@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/sovietscout/valorank/pkg/content"
@@ -28,6 +29,8 @@ func NewClient(matchChan chan models.Match) *Client {
 }
 
 func (c *Client) Start(ret chan models.State) {
+	log.Println("Client started")
+
 	c.IsRunning = true
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
@@ -46,10 +49,14 @@ func (c *Client) Stop() {
 	c.cancel()
 	c.setState(models.OFFLINE)
 	c.IsRunning = false
+
+	log.Println("Client stopped")
 }
 
 // Checks every 1 second(s) to see if state has updated
 func (c *Client) ClientStateChangeLoop(ret chan models.State) {
+	log.Println("State change loop started")
+
 	ticker := time.NewTicker(time.Second)
 	previousState := c.State
 
@@ -71,9 +78,12 @@ func (c *Client) ClientStateChangeLoop(ret chan models.State) {
 }
 
 func (c *Client) getPresence() models.State {
+	state := models.OFFLINE
+
 	resp, err := riot.Local.GET("/chat/v4/presences")
 	if err != nil {
-		return models.OFFLINE
+		log.Println("Err in Get:", err)
+		return state
 	}
 	defer resp.Body.Close()
 
@@ -81,14 +91,15 @@ func (c *Client) getPresence() models.State {
 	json.NewDecoder(resp.Body).Decode(data)
 
 	if len(data.Presences) == 0 {
-		return models.OFFLINE
+		return state
 	}
-
-	state := models.OFFLINE
 
 	for _, presence := range data.Presences {
 		if presence.Product == "valorant" && presence.Puuid == riot.UserPUUID {
-			private_bytes, _ := base64.StdEncoding.DecodeString(presence.Private)
+			private_bytes, err := base64.StdEncoding.DecodeString(presence.Private)
+			if err != nil {
+				log.Println("Err in decode string")
+			}
 
 			data := new(riot.PresencesPrivate)
 			json.Unmarshal(private_bytes, data)
@@ -100,6 +111,8 @@ func (c *Client) getPresence() models.State {
 				state = models.PREGAME
 			case "INGAME":
 				state = models.INGAME
+			default:
+				log.Println(presence)	// log whole presence if offline
 			}
 
 			break
@@ -110,6 +123,7 @@ func (c *Client) getPresence() models.State {
 }
 
 func (c *Client) setState(state models.State) {
+	log.Printf("State set: %s\n", state)
 	c.State = state
 
 	switch state {
@@ -129,7 +143,9 @@ func (c *Client) setState(state models.State) {
 
 // Essentially a wrapper
 func (c *Client) GetMatch() {
+	log.Println("Getting match")
 	c.matchChan <- c.Riot.GetMatch()
+	log.Println("Match received")
 }
 
 type SessionResp struct {

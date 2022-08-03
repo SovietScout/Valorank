@@ -2,6 +2,7 @@ package riot
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/sovietscout/valorank/pkg/content"
@@ -19,6 +20,7 @@ func (n *NetCL) GetRiotHeaders() http.Header {
 		return nil
 	}
 
+	// log.Println("Received riot headers")
 	return v.(http.Header)
 }
 
@@ -44,6 +46,8 @@ func (n *NetCL) generateRiotHeaders() (http.Header, error) {
 func SetVars(userPUUID, region string) {
 	UserPUUID = userPUUID
 	Region = region
+
+	log.Println("Riot vars set")
 }
 
 func SetCurrentSeason() error {
