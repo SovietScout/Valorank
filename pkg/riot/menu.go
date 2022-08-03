@@ -13,9 +13,9 @@ type Menu struct{}
 func (r *Menu) GetMatch() models.Match {
 	match := models.Match{State: models.MENU}
 
-	userPartyID := getUserPartyID()
+	UserPartyID := getUserPartyID()
 
-	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/parties/"+userPartyID), nil)
+	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/parties/"+UserPartyID), nil)
 	req.Header = Local.GetRiotHeaders()
 
 	resp, err := client.Do(req)
@@ -28,7 +28,7 @@ func (r *Menu) GetMatch() models.Match {
 	data := new(FetchPartyResp)
 	json.NewDecoder(resp.Body).Decode(data)
 
-	match.GamePodID = ""
+	// match.GamePodID = ""
 
 	playerRecv := make(chan *models.Player, len(data.Members))
 	var wg sync.WaitGroup
@@ -50,7 +50,7 @@ func (r *Menu) GetMatch() models.Match {
 			SetRank(p)
 
 			playerRecv <- p
-		}(player, userPartyID)
+		}(player, UserPartyID)
 	}
 
 	wg.Wait()
@@ -63,7 +63,7 @@ func (r *Menu) GetMatch() models.Match {
 	}
 
 	SetNames(match.Players)
-	SetLevelSort(match.Players)
+	SetSort(match.Players)
 
 	return match
 }

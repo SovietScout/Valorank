@@ -17,6 +17,7 @@ import (
 var (
 	UserPUUID string
 	Region    string
+	UserPartyID string
 
 	Local *NetCL
 
@@ -101,6 +102,11 @@ func SetPartyID(players []*models.Player) error {
 				json.Unmarshal(private_bytes, data)
 
 				player.PartyID = data.PartyID
+
+				if player.SubjectID == UserPUUID {
+					UserPartyID = data.PartyID
+				}
+
 				break
 			}
 		}
@@ -114,7 +120,8 @@ func SetNames(players []*models.Player) error {
 	PUUIDs := []string{}
 
 	for _, player := range players {
-		if !player.Incognito {
+		// If player is in the same party as user, bypass incognito restrictions
+		if !player.Incognito || player.PartyID == UserPUUID {
 			PUUIDs = append(PUUIDs, player.SubjectID)
 		}
 	}
@@ -156,6 +163,17 @@ func SetLevelSort(players []*models.Player) {
 
 // Sorts players by team
 func SetTeamSort(players []*models.Player) {
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].Ally
+	})
+}
+
+// Sorts players by level and team
+func SetSort(players []*models.Player) {
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].Level > players[j].Level
+	})
+
 	sort.Slice(players, func(i, j int) bool {
 		return players[i].Ally
 	})

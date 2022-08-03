@@ -78,10 +78,9 @@ func (r *Ingame) GetMatch() models.Match {
 		match.Players = append(match.Players, player)
 	}
 
-	SetNames(match.Players)
 	SetPartyID(match.Players)
-	SetLevelSort(match.Players)
-	SetTeamSort(match.Players)
+	SetNames(match.Players)
+	SetSort(match.Players)
 
 	return match
 }

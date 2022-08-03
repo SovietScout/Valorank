@@ -10,12 +10,14 @@ import (
 	"github.com/sovietscout/valorank/pkg/models"
 )
 
+var ErrPregameIndexOutOfRange = errors.New("pregame: Team slice empty, likely moved to Game")
+
 type Pregame struct {
 	GamePod string
 }
 
 func (r *Pregame) GetMatch() models.Match {
-	match := models.Match{State: models.OFFLINE}
+	match := models.Match{State: models.PREGAME}
 
 	// Current Pregame ID
 	reqID, _ := http.NewRequest(http.MethodGet, GetGLZURL("/pregame/v1/players/"+UserPUUID), nil)
@@ -47,7 +49,7 @@ func (r *Pregame) GetMatch() models.Match {
 	match.GamePodID = data.GamePodID
 
 	if len(data.Teams) == 0 {
-		match.Err = errors.New("pregame: Index out of range. Most likely moved to Game")
+		match.Err = ErrPregameIndexOutOfRange
 		return match
 	}
 
@@ -83,9 +85,9 @@ func (r *Pregame) GetMatch() models.Match {
 		match.Players = append(match.Players, player)
 	}
 
-	SetNames(match.Players)
 	SetPartyID(match.Players)
-	SetLevelSort(match.Players)
+	SetNames(match.Players)
+	SetSort(match.Players)
 
 	return match
 }
