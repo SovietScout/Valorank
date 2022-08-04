@@ -5,16 +5,21 @@ import "github.com/charmbracelet/bubbles/key"
 type KeyMap struct {
 	Quit key.Binding
 	Refresh key.Binding
+	Help key.Binding
 }
 
 var DefaultKeyMap = KeyMap {
 	Quit: key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl-c", "Quit Valorank"),
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "Quit Valorank"),
 	),
 	Refresh: key.NewBinding(
-		key.WithKeys("f5", "r"),
-		key.WithHelp("F5", "Refresh players"),
+		key.WithKeys("r", "f5"),
+		key.WithHelp("r", "Refresh players"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("h"),
+		key.WithHelp("h", "Help"),
 	),
 }
 
@@ -25,6 +30,6 @@ func (k KeyMap) ShortHelp() []key.Binding {
 // FullHelp returns keybindings for the expanded help view
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Refresh, k.Quit},
+		{k.Help, k.Refresh, k.Quit},
 	}
 }
