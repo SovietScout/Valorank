@@ -29,8 +29,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			cmds = append(cmds, m.waitForStateChange(m.clientStateChan),
-				m.waitForApplicationState(m.applicationStateChan),
-			)
+				m.waitForApplicationState(m.applicationStateChan))
 		} else {
 			if m.client.IsRunning {
 				m.client.Stop()
@@ -76,6 +75,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.Quit):
+			log.Println("Program exited")
 			cmds = append(cmds, tea.Quit)
 		case key.Matches(msg, DefaultKeyMap.Refresh):
 			log.Println("Manually refreshed")

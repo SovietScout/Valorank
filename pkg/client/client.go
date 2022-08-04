@@ -98,7 +98,7 @@ func (c *Client) getPresence() models.State {
 		if presence.Product == "valorant" && presence.Puuid == riot.UserPUUID {
 			private_bytes, err := base64.StdEncoding.DecodeString(presence.Private)
 			if err != nil {
-				log.Println("Err in decode string")
+				log.Println("Err in decode string", err)
 			}
 
 			data := new(riot.PresencesPrivate)
@@ -123,7 +123,7 @@ func (c *Client) getPresence() models.State {
 }
 
 func (c *Client) setState(state models.State) {
-	log.Printf("State set: %s\n", state)
+	log.Println("State set:", state)
 	c.State = state
 
 	switch state {
@@ -143,7 +143,6 @@ func (c *Client) setState(state models.State) {
 
 // Essentially a wrapper
 func (c *Client) GetMatch() {
-	log.Println("Getting match")
 	c.matchChan <- c.Riot.GetMatch()
 	log.Println("Match received")
 }
