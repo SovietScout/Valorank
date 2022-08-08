@@ -7,6 +7,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/sovietscout/valorank/pkg/client/local"
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
 	"github.com/sovietscout/valorank/pkg/riot"
@@ -16,32 +18,33 @@ type Client struct {
 	IsRunning bool
 	State     models.State
 
-	Riot riot.RiotClient
+	Riot riot.IRiotClient
 
-	matchChan chan models.Match
+	stateCh chan models.State
+	matchCh chan models.Match
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func NewClient(matchChan chan models.Match) *Client {
-	return &Client{State: models.OFFLINE, matchChan: matchChan}
+func NewClient(stateCh chan models.State, matchCh chan models.Match) *Client {
+	return &Client{State: models.OFFLINE, stateCh: stateCh, matchCh: matchCh}
 }
 
-func (c *Client) Start(ret chan models.State) {
-	log.Println("Client started")
+func (c *Client) Start() {
+	log.Println("valorank: Client started")
 
 	c.IsRunning = true
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	go func() {
-		riot.Local = riot.NewNetCL(lockfileData())
+		local.Client = local.NewClient(lockfileData())
 		riot.SetVars(getRiotVars())
 
 		content.SetContent()
 		riot.SetCurrentSeason()
 
-		c.ClientStateChangeLoop(ret)
+		c.ClientStateChangeLoop()
 	}()
 }
 
@@ -50,39 +53,122 @@ func (c *Client) Stop() {
 	c.setState(models.OFFLINE)
 	c.IsRunning = false
 
-	log.Println("Client stopped")
+	log.Println("valorank: Client stopped")
 }
 
 // Checks every 1 second(s) to see if state has updated
-func (c *Client) ClientStateChangeLoop(ret chan models.State) {
-	log.Println("State change loop started")
+func (c *Client) ClientStateChangeLoop() {
+	log.Println("valorank: State change loop started")
 
 	ticker := time.NewTicker(time.Second)
-	previousState := c.State
 
+	L:
 	for {
 		select {
-		case <-ticker.C:
-			if currentState := c.getPresence(); currentState != previousState {
-				c.setState(currentState)
-				previousState = currentState
+		case <- ticker.C:
+			currPres := c.getPresence()
 
-				ret <- currentState
+			if currPres == models.OFFLINE {
+				continue
 			}
 
-		case <-c.ctx.Done():
+			ticker.Stop()
+			break L
+
+		case <- c.ctx.Done():
 			ticker.Stop()
 			return
 		}
 	}
+
+	conn, err := local.Client.InitWS()
+	if err != nil {
+		log.Println("ws init:", err)
+		return
+	}
+	defer conn.Close()
+
+	err = conn.WriteMessage(websocket.BinaryMessage, []byte(`[5, "OnJsonApiEvent_chat_v4_presences"]`))
+	if err != nil {
+		log.Println("ws write msg:", err)
+	}
+
+	go func() {
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("ws read:", err)
+				break
+			}
+
+			if len(msg) == 0 {
+				continue
+			}
+
+			var resp []json.RawMessage
+			if err := json.Unmarshal(msg, &resp); err != nil {
+				log.Println("json unmarshal:", err)
+			}
+
+			var respType string
+			if err := json.Unmarshal(resp[1], &respType); err != nil {
+				log.Println("json unmarshal:", err)
+			}
+
+			switch(respType) {
+			case "OnJsonApiEvent_chat_v4_presences":
+				var data WSChat4Presences
+				if err := json.Unmarshal(resp[2], &data); err != nil {
+					log.Println("json unmarshal:", err)
+				}
+
+				previousState := c.State
+
+				for _, presence := range data.Data.Presences {
+					if presence.Product == "valorant" && presence.Puuid == riot.UserPUUID {
+						if data.EventType == "Delete" {
+							c.setState(models.OFFLINE)
+
+							log.Println("valorank: Game closed")
+							return
+						}
+
+						newState := getStateFromPresence(&presence)
+
+						if newState != models.MENU && newState == previousState {
+							continue
+						}
+
+						c.setState(newState)
+						previousState = newState
+
+						break
+					}
+				}
+			}
+		}
+	}()
+
+	<- c.ctx.Done()
+
+	err = conn.WriteMessage(
+		websocket.CloseMessage, 
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+	)
+
+	if err != nil {
+		log.Println("ws close:", err)
+	}
+
+	local.Client = nil
 }
 
 func (c *Client) getPresence() models.State {
 	state := models.OFFLINE
 
-	resp, err := riot.Local.GET("/chat/v4/presences")
+	resp, err := local.Client.GET("/chat/v4/presences")
 	if err != nil {
-		log.Println("Err in Get:", err)
+		log.Println("client get:", err)
 		return state
 	}
 	defer resp.Body.Close()
@@ -96,25 +182,7 @@ func (c *Client) getPresence() models.State {
 
 	for _, presence := range data.Presences {
 		if presence.Product == "valorant" && presence.Puuid == riot.UserPUUID {
-			private_bytes, err := base64.StdEncoding.DecodeString(presence.Private)
-			if err != nil {
-				log.Println("Err in decode string", err)
-			}
-
-			data := new(riot.PresencesPrivate)
-			json.Unmarshal(private_bytes, data)
-
-			switch data.SessionLoopState {
-			case "MENUS":
-				state = models.MENU
-			case "PREGAME":
-				state = models.PREGAME
-			case "INGAME":
-				state = models.INGAME
-			default:
-				log.Println(presence)	// log whole presence if offline
-			}
-
+			state = getStateFromPresence(&presence)
 			break
 		}
 	}
@@ -123,8 +191,10 @@ func (c *Client) getPresence() models.State {
 }
 
 func (c *Client) setState(state models.State) {
-	log.Println("State set:", state)
+	log.Println("valorank: State set:", state)
+
 	c.State = state
+	c.stateCh <- state
 
 	switch state {
 	case models.MENU:
@@ -143,8 +213,28 @@ func (c *Client) setState(state models.State) {
 
 // Essentially a wrapper
 func (c *Client) GetMatch() {
-	c.matchChan <- c.Riot.GetMatch()
-	log.Println("Match received")
+	c.matchCh <- c.Riot.GetMatch()
+	log.Println("valorank: Match received")
+}
+
+func getStateFromPresence(presence *riot.PresencesData) models.State {
+	private_bytes, _ := base64.StdEncoding.DecodeString(presence.Private)
+
+	data := new(riot.PresencesPrivate)
+	json.Unmarshal(private_bytes, data)
+
+	var state models.State
+
+	switch data.SessionLoopState {
+	case "MENUS":
+		state = models.MENU
+	case "PREGAME":
+		state = models.PREGAME
+	case "INGAME":
+		state = models.INGAME
+	}
+
+	return state
 }
 
 type SessionResp struct {
@@ -155,4 +245,11 @@ type FetchSessionResp struct {
 	LaunchConfiguration struct {
 		Arguments []string `json:"arguments"`
 	} `json:"launchConfiguration"`
+}
+
+type WSChat4Presences struct {
+	Data struct {
+		Presences []riot.PresencesData `json:"presences"`
+	} `json:"data"`
+	EventType string `json:"eventType"`
 }

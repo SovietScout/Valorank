@@ -8,13 +8,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sovietscout/valorank/pkg/riot"
+	"github.com/sovietscout/valorank/pkg/client/local"
+	"github.com/sovietscout/valorank/pkg/models"
 )
 
 var (
 	doOnce sync.Once
 
-	id, region string
+	id string
+	region models.Region
 )
 
 func lockfileData() (string, string, string) {
@@ -29,7 +31,7 @@ func lockfileData() (string, string, string) {
 	return lockfile[2], lockfile[3], lockfile[4]
 }
 
-func getRiotVars() (string, string) {
+func getRiotVars() (string, models.Region) {
 	doOnce.Do(func() {
 		id = getID()
 		region = getRegion()	
@@ -39,7 +41,7 @@ func getRiotVars() (string, string) {
 }
 
 func getID() string {
-	resp, err := riot.Local.GET("/chat/v1/session")
+	resp, err := local.Client.GET("/chat/v1/session")
 	if err != nil {
 		time.Sleep(250 * time.Millisecond)
 		return getID()		
@@ -59,8 +61,8 @@ func getID() string {
 	return data.Puuid
 }
 
-func getRegion() string {
-	resp, err := riot.Local.GET("/product-session/v1/external-sessions")
+func getRegion() models.Region {
+	resp, err := local.Client.GET("/product-session/v1/external-sessions")
 	if err != nil {
 		time.Sleep(250 * time.Millisecond)
 		return getRegion()
@@ -72,12 +74,12 @@ func getRegion() string {
 		return getRegion()
 	}
 
-	var region string
+	var region models.Region
 
 	for _, val := range data {
 		for _, arg := range val.LaunchConfiguration.Arguments {
 			if strings.HasPrefix(arg, "-ares-deployment") {
-				region = arg[strings.Index(arg, "=") + 1:]
+				region = models.GetRegion(arg[strings.Index(arg, "=") + 1:])
 				break
 			}
 		}

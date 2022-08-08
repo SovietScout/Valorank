@@ -10,9 +10,10 @@ import (
 
 type model struct {
 	client               *client.Client
+	stateCh              chan (models.State)
+	matchCh              chan (models.Match)
 	applicationStateChan chan (bool)
-	clientStateChan      chan (models.State)
-	matchChan            chan (models.Match)
+	content              string
 	table                playertable.Model
 	keys                 KeyMap
 	help                 help.Model
@@ -27,13 +28,15 @@ func (m model) Init() tea.Cmd {
 }
 
 func NewModel() *model {
-	matchChan := make(chan models.Match)
+	matchCh := make(chan models.Match)
+	stateCh := make(chan models.State)
 
 	return &model{
-		client:               client.NewClient(matchChan),
+		client:               client.NewClient(stateCh, matchCh),
+		stateCh:              stateCh,
+		matchCh:              matchCh,
 		applicationStateChan: make(chan bool),
-		clientStateChan:      make(chan models.State),
-		matchChan:            matchChan,
+		content:              initializingStr,
 		table:                playertable.New(),
 		keys:                 DefaultKeyMap,
 		help:                 help.New(),

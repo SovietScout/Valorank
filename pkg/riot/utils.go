@@ -5,45 +5,12 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/sovietscout/valorank/pkg/client/local"
 	"github.com/sovietscout/valorank/pkg/content"
-	"golang.org/x/sync/singleflight"
+	"github.com/sovietscout/valorank/pkg/models"
 )
 
-var requestGroup singleflight.Group
-
-func (n *NetCL) GetRiotHeaders() http.Header {
-	v, err, _ := requestGroup.Do("local", func() (interface{}, error) {
-		return n.generateRiotHeaders()
-	})
-
-	if err != nil {
-		return nil
-	}
-
-	// log.Println("Received riot headers")
-	return v.(http.Header)
-}
-
-func (n *NetCL) generateRiotHeaders() (http.Header, error) {
-	resp, err := n.GET("/entitlements/v1/token")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	data := new(EntitlementResp)
-	json.NewDecoder(resp.Body).Decode(data)
-
-	return http.Header{
-		"Authorization":			{"Bearer " + data.AccessToken},
-		"X-Riot-Entitlements-JWT":	{data.Token},
-		"X-Riot-ClientPlatform":	{content.ClientPlatform},
-		"X-Riot-ClientVersion": 	{content.ClientVersion},
-		"User-Agent":           	{"ShooterGame/13 Windows/10.0.19043.1.256.64bit"},
-	}, nil
-}
-
-func SetVars(userPUUID, region string) {
+func SetVars(userPUUID string, region models.Region) {
 	UserPUUID = userPUUID
 	Region = region
 
@@ -56,7 +23,7 @@ func SetCurrentSeason() error {
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, GetSharedURL("/content-service/v3/content"), nil)
-	req.Header = Local.GetRiotHeaders()
+	req.Header = local.Client.GetRiotHeaders()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -91,13 +58,13 @@ type FetchContentResp struct {
 }
 
 func GetGLZURL(endpoint string) string {
-	return "https://glz-" + Region + "-1." + Region + ".a.pvp.net" + endpoint
+	return "https://glz-" + Region.Region + "-1." + Region.Shard + ".a.pvp.net" + endpoint
 }
 
 func GetPDURL(endpoint string) string {
-	return "https://pd." + Region + ".a.pvp.net" + endpoint
+	return "https://pd." + Region.Shard + ".a.pvp.net" + endpoint
 }
 
 func GetSharedURL(endpoint string) string {
-	return "https://shared." + Region + ".a.pvp.net" + endpoint
+	return "https://shared." + Region.Shard + ".a.pvp.net" + endpoint
 }
