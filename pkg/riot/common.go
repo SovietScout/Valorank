@@ -10,27 +10,26 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/sovietscout/valorank/pkg/local"
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
 )
 
 var (
-	UserPUUID string
-	Region    string
+	UserPUUID   string
 	UserPartyID string
-
-	Local *NetCL
+	Region      models.Region
 
 	client = http.Client{Timeout: 10 * time.Second}
 )
 
-type RiotClient interface {
+type IRiotClient interface {
 	GetMatch() models.Match
 }
 
 func SetRank(player *models.Player) error {
 	req, _ := http.NewRequest(http.MethodGet, GetPDURL("/mmr/v1/players/"+player.SubjectID), nil)
-	req.Header = Local.GetRiotHeaders()
+	req.Header = local.Client.GetRiotHeaders()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -58,7 +57,7 @@ func SetRank(player *models.Player) error {
 
 				rank, _ := strconv.Atoi(rankStr)
 
-				if rank > rankInSeason {
+				if rankInSeason < rank {
 					rankInSeason = rank
 				}
 			}
@@ -84,7 +83,7 @@ func SetRank(player *models.Player) error {
 }
 
 func SetPartyID(players []*models.Player) error {
-	resp, err := Local.GET("/chat/v4/presences")
+	resp, err := local.Client.GET("/chat/v4/presences")
 	if err != nil {
 		return err
 	}
@@ -95,7 +94,7 @@ func SetPartyID(players []*models.Player) error {
 
 	for _, presence := range data.Presences {
 		for _, player := range players {
-			if presence.Puuid == player.SubjectID {
+			if presence.Puuid == player.SubjectID && presence.Product == "valorant" {
 				private_bytes, _ := base64.StdEncoding.DecodeString(presence.Private)
 
 				data := new(PresencesPrivate)
@@ -121,7 +120,8 @@ func SetNames(players []*models.Player) error {
 
 	for _, player := range players {
 		// If player is in the same party as user, bypass incognito restrictions
-		if !player.Incognito || player.PartyID == UserPUUID {
+		if !player.Incognito || player.PartyID == UserPartyID {
+			player.Incognito = false
 			PUUIDs = append(PUUIDs, player.SubjectID)
 		}
 	}
@@ -129,7 +129,7 @@ func SetNames(players []*models.Player) error {
 	jsonPUUIDs, _ := json.Marshal(PUUIDs)
 
 	req, _ := http.NewRequest(http.MethodPut, GetPDURL("/name-service/v2/players"), bytes.NewBuffer(jsonPUUIDs))
-	req.Header.Set("Content-Type", "application/json")
+	req.Header = local.Client.GetRiotHeaders()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -168,14 +168,10 @@ func SetTeamSort(players []*models.Player) {
 	})
 }
 
-// Sorts players by level and team
-func SetSort(players []*models.Player) {
+// Sorts players by party id
+func SetPartySort(players []*models.Player) {
 	sort.Slice(players, func(i, j int) bool {
-		return players[i].Level > players[j].Level
-	})
-
-	sort.Slice(players, func(i, j int) bool {
-		return players[i].Ally
+		return players[i].PartyID < players[j].PartyID
 	})
 }
 
@@ -213,11 +209,13 @@ type SeasonIDResp struct {
 }
 
 type PresencesResp struct {
-	Presences []struct {
-		Private string `json:"private"`
-		Product string `json:"product"`
-		Puuid   string `json:"puuid"`
-	} `json:"presences"`
+	Presences []PresencesData `json:"presences"`
+}
+
+type PresencesData struct {
+	Private string `json:"private"`
+	Product string `json:"product"`
+	Puuid   string `json:"puuid"`
 }
 
 type PresencesPrivate struct {
