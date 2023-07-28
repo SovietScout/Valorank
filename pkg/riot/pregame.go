@@ -7,21 +7,25 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/sovietscout/valorank/pkg/local"
 	"github.com/sovietscout/valorank/pkg/models"
 )
 
 var ErrPregameIndexOutOfRange = errors.New("pregame: Team slice empty, likely moved to Game")
 
 type Pregame struct {
-	GamePod string
+	sync.Mutex
 }
 
 func (r *Pregame) GetMatch() models.Match {
+	r.Lock()
+	defer r.Unlock()
+
 	match := models.Match{State: models.PREGAME}
 
 	// Current Pregame ID
 	reqID, _ := http.NewRequest(http.MethodGet, GetGLZURL("/pregame/v1/players/"+UserPUUID), nil)
-	reqID.Header = Local.GetRiotHeaders()
+	reqID.Header = local.Client.GetRiotHeaders()
 
 	respID, err := client.Do(reqID)
 	if err != nil {
@@ -34,7 +38,7 @@ func (r *Pregame) GetMatch() models.Match {
 
 	// Pregame details
 	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/pregame/v1/matches/"+dataID.MatchID), nil)
-	req.Header = Local.GetRiotHeaders()
+	req.Header = local.Client.GetRiotHeaders()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -62,9 +66,14 @@ func (r *Pregame) GetMatch() models.Match {
 		go func(player PlayerResp) {
 			defer wg.Done()
 
+			playerLevel := -1
+			if !player.PlayerIdentity.HideAccountLevel {
+				playerLevel = player.PlayerIdentity.AccountLevel
+			}
+
 			p := &models.Player{
 				SubjectID: player.Subject,
-				Level:     player.PlayerIdentity.AccountLevel,
+				Level:     playerLevel,
 				Ally:      true,
 				Incognito: player.PlayerIdentity.Incognito,
 				Agent:     strings.ToLower(player.CharacterID),
@@ -87,7 +96,8 @@ func (r *Pregame) GetMatch() models.Match {
 
 	SetPartyID(match.Players)
 	SetNames(match.Players)
-	SetSort(match.Players)
+
+	SetPartySort(match.Players)
 
 	return match
 }

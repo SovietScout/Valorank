@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
 	"golang.org/x/term"
@@ -17,21 +18,21 @@ var (
 	centerStyle = lipgloss.NewStyle().Align(lipgloss.Center)
 
 	gamePod string
-	showRefresh = false
 )
 
 func (m *model) View() string {
 	doc := strings.Builder{}
 
 	doc.WriteString(m.infoLine() + "\n")
-	doc.WriteString(m.tableLines())
+	doc.WriteString(m.tableLines() + "\n")
+	doc.WriteString(m.logLine())
 
 	return doc.String()
 }
 
 func (m *model) infoLine() string {
-	name := content.NAME + " " + content.VERSION + " |"
-	help := m.helpLine()
+	name := content.NAME + " " + content.VERSION
+	help := m.help.View(m.keys)
 	state := m.stateLine()
 
 	sideW := max(name, help)
@@ -53,24 +54,11 @@ func (m *model) stateLine() string {
 	doc.WriteString(content.ColourFromState(m.client.State))
 
 	switch m.client.State {
-	case models.PREGAME:
-	case models.INGAME:
+	case models.PREGAME, models.INGAME:
 		doc.WriteString(" (" + gamePod + ")")
 	}
 
 	return doc.String()
-}
-
-func (m *model) helpLine() string {
-	hl := "| "
-
-	if showRefresh {
-		hl += "Fetching players…"
-	} else {
-		hl += m.help.View(m.keys)
-	}
-
-	return hl
 }
 
 func (m *model) tableLines() string {
@@ -78,8 +66,13 @@ func (m *model) tableLines() string {
 	return m.table.View()
 }
 
-func (m *model) showRefresh(show bool) {
-	showRefresh = show
+func (m *model) logLine() string {
+	if m.content != "" {
+		log := centerStyle.Width(Width - 2).Render(m.content)
+		return termenv.String("└" + log + "┘").Faint().String()
+	}
+
+	return m.content
 }
 
 func (m *model) setGamePodID(matchGPID string) {
@@ -88,11 +81,11 @@ func (m *model) setGamePodID(matchGPID string) {
 
 func max(a, b string) int {
 	aW := lipgloss.Width(a)
-	bW :=  lipgloss.Width(b)
+	bW := lipgloss.Width(b)
 	
 	if aW >= bW {
 		return aW
-	} else {
-		return bW
 	}
+
+	return bW
 }

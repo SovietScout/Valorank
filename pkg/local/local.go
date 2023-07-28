@@ -16,7 +16,7 @@ import (
 var Client *LocalClient
 
 type LocalClient struct {
-	http *http.Client
+	http   *http.Client
 	dialer *websocket.Dialer
 
 	url    url.URL

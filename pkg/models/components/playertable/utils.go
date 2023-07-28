@@ -1,8 +1,11 @@
 package playertable
 
 import (
+	"strconv"
+
 	"github.com/muesli/termenv"
 	"github.com/sovietscout/valorank/pkg/models"
+	"github.com/sovietscout/valorank/pkg/riot"
 )
 
 var (
@@ -18,11 +21,23 @@ var (
 		p.Color("#E2ED39"),
 		p.Color("#D452CF"),
 	}
+
+	teamColour = p.Color("#4c97ed")
+	oppColour  = p.Color("#ee4d4d")
+	userColour = p.Color("#dde029")
 )
 
+func iconGen() func() string {
+	var index int = 0
+
+	return func() string {
+		defer func() { index++ }()
+		return symbol.Foreground(partyIconColours[index]).String()
+	}
+}
+
 func GenerateParties(players []*models.Player) map[string]string {
-	recvCh := make(chan bool, 1)
-	iconCh := newIcon(recvCh)
+	newIcon := iconGen()
 
 	var tempPIDs = map[string]struct{}{}
 	var dupPIDs = map[string]string{}
@@ -30,49 +45,42 @@ func GenerateParties(players []*models.Player) map[string]string {
 	// First pass: check which party IDs are duplicates (2+ players in the same party)
 	for _, player := range players {
 		if _, ok := tempPIDs[player.PartyID]; ok {
-			recvCh <- true
-			dupPIDs[player.PartyID] = <-iconCh
+			if dupPIDs[player.PartyID] == "" {
+				dupPIDs[player.PartyID] = newIcon()
+			}
+		} else {
+			tempPIDs[player.PartyID] = struct{}{}
 		}
-
-		tempPIDs[player.PartyID] = struct{}{}
 	}
 
-	// Second pass: assign party icons if party ID is duplicate
-	/*
-		var partyIcons []string
-		for _, player := range players {
-			if icon, ok := dupPIDs[player.PartyID]; ok {
-				partyIcons = append(partyIcons, icon)
-			} else {
-				partyIcons = append(partyIcons, "")
-			}
-		}
-	*/
-
-	recvCh <- false
-	close(recvCh)
-
+	newIcon = nil
 	return dupPIDs
 }
 
-func newIcon(recvCh <-chan bool) <-chan string {
-	ch := make(chan string, 1)
+func ColouredName(player *models.Player) string {
+	var colour termenv.Color
 
-	go func() {
-		index := 0
+	if player.SubjectID == riot.UserPUUID {
+		colour = userColour
+	} else if player.Ally {
+		colour = teamColour
+	} else {
+		colour = oppColour
+	}
 
-		for send := range recvCh {
-			if send {
-				ch <- symbol.Foreground(partyIconColours[index]).String()
-			} else {
-				break
-			}
+	return termenv.String(player.Name).Foreground(colour).String()
+}
 
-			index++
+func NameGen() func(string) string {
+	var nameMap = map[string]int{}
+
+	return func(s string) string {
+		if _, ok := nameMap[s]; !ok {
+			nameMap[s] = 1
+			return s
 		}
 
-		close(ch)
-	}()
-
-	return ch
+		defer func() { nameMap[s]++ }()
+		return s + " " + strconv.Itoa(nameMap[s])
+	}
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/sovietscout/valorank/pkg/client/local"
+	"github.com/sovietscout/valorank/pkg/local"
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
 	"github.com/sovietscout/valorank/pkg/riot"
@@ -60,26 +60,7 @@ func (c *Client) Stop() {
 func (c *Client) ClientStateChangeLoop() {
 	log.Println("valorank: State change loop started")
 
-	ticker := time.NewTicker(time.Second)
-
-	L:
-	for {
-		select {
-		case <- ticker.C:
-			currPres := c.getPresence()
-
-			if currPres == models.OFFLINE {
-				continue
-			}
-
-			ticker.Stop()
-			break L
-
-		case <- c.ctx.Done():
-			ticker.Stop()
-			return
-		}
-	}
+	c.setState(c.waitForPresence())
 
 	conn, err := local.Client.InitWS()
 	if err != nil {
@@ -90,7 +71,7 @@ func (c *Client) ClientStateChangeLoop() {
 
 	err = conn.WriteMessage(websocket.BinaryMessage, []byte(`[5, "OnJsonApiEvent_chat_v4_presences"]`))
 	if err != nil {
-		log.Println("ws write msg:", err)
+		log.Println("ws write:", err)
 	}
 
 	go func() {
@@ -163,6 +144,50 @@ func (c *Client) ClientStateChangeLoop() {
 	local.Client = nil
 }
 
+// Wait until user has non offline presence
+func (c *Client) waitForPresence() models.State {
+	ticker := time.NewTicker(1 * time.Second)
+
+	for {
+		select {
+		case <- ticker.C:
+
+			resp, err := local.Client.GET("/chat/v4/presences")
+			if err != nil {
+				log.Println("client get:", err)
+				continue
+			}
+			defer resp.Body.Close()
+
+			data := new(riot.PresencesResp)
+			json.NewDecoder(resp.Body).Decode(data)
+
+			if len(data.Presences) == 0 {
+				continue
+			}
+
+			var presenceState models.State
+
+			for _, presence := range data.Presences {
+				if presence.Product == "valorant" && presence.Puuid == riot.UserPUUID {
+					if state := getStateFromPresence(&presence); state != models.OFFLINE {
+						presenceState = state
+					}
+
+					break
+				}
+			}
+
+			return presenceState
+
+		case <- c.ctx.Done():
+			ticker.Stop()
+			return models.OFFLINE
+		}
+	}
+}
+
+/*
 func (c *Client) getPresence() models.State {
 	state := models.OFFLINE
 
@@ -189,6 +214,7 @@ func (c *Client) getPresence() models.State {
 
 	return state
 }
+*/
 
 func (c *Client) setState(state models.State) {
 	log.Println("valorank: State set:", state)
@@ -214,7 +240,7 @@ func (c *Client) setState(state models.State) {
 // Essentially a wrapper
 func (c *Client) GetMatch() {
 	c.matchCh <- c.Riot.GetMatch()
-	log.Println("valorank: Match received")
+	// log.Println("valorank: Match received")
 }
 
 func getStateFromPresence(presence *riot.PresencesData) models.State {

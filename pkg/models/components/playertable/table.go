@@ -1,8 +1,6 @@
 package playertable
 
 import (
-	"strconv"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -95,6 +93,8 @@ func (m Model) Clear() Model {
 
 func generateRowsFromData(players []*models.Player) []table.Row {
 	var playerParties = GenerateParties(players)
+
+	var playerNameGen = NameGen()
 	var lastPlayerTeam bool
 
 	rows := []table.Row{}
@@ -109,9 +109,9 @@ func generateRowsFromData(players []*models.Player) []table.Row {
 		agent := content.AgentFromID(player.Agent)
 		if player.Incognito {
 			if agent != nil {
-				player.Name = agent.Name
+				player.Name = playerNameGen(agent.Name)
 			} else {
-				player.Name = "Player " + strconv.Itoa(i)
+				player.Name = playerNameGen("Player")
 			}
 		}
 
@@ -123,7 +123,7 @@ func generateRowsFromData(players []*models.Player) []table.Row {
 		row := table.NewRow(table.RowData{
 			cParty: partyIcon,
 			cAgent: content.StyleAgent(agent),
-			cName:  content.ColourFromPlayer(player),
+			cName:  ColouredName(player),
 			cRank:  content.RankFromID(player.Rank),
 			cRR:    player.RR,
 			cPR:    content.RankFromID(player.PeakRank),

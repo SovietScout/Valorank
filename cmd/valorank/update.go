@@ -11,6 +11,12 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/sovietscout/valorank/pkg/models"
+	"github.com/sovietscout/valorank/pkg/riot"
+)
+
+const (
+	fetchPlayerStr  = "Fetching players"
+	initializingStr = "Initializing Valorank"
 )
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -25,62 +31,71 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case applicationStateMsg:
 		if bool(msg) {
 			if !m.client.IsRunning {
-				m.client.Start(m.clientStateChan)
+				m.client.Start()
 			}
 
-			cmds = append(cmds, m.waitForStateChange(m.clientStateChan),
+			cmds = append(cmds, m.waitForStateChange(m.stateCh),
 				m.waitForApplicationState(m.applicationStateChan))
 		} else {
 			if m.client.IsRunning {
 				m.client.Stop()
 			}
 
-			m.showRefresh(false)
 			cmds = append(cmds, m.waitForApplicationState(m.applicationStateChan))
 		}
+
+		m.content = ""
 
 	// Game state has changed
 	case clientStateMsg:
 		switch models.State(msg) {
 		case models.OFFLINE:
-			m.showRefresh(false)
+			m.content = ""
 			m.table = m.table.Clear()
 		default:
-			m.showRefresh(true)
+			m.content = fetchPlayerStr
 			cmds = append(cmds, tea.Batch(
-				m.waitForMatch(m.matchChan),
-				m.waitForStateChange(m.clientStateChan),
+				m.waitForMatch(m.matchCh),
+				m.waitForStateChange(m.stateCh),
 			))
 		}
 
 	// Players received
 	case models.Match:
-		m.showRefresh(false)
+		m.content = ""
 
 		if msg.Err != nil {
 			log.Println(msg.Err)
+
+			if errors.Is(msg.Err, riot.ErrPregameIndexOutOfRange) {
+				m.content = "You have been rate limited"
+			} else {
+				m.content = "An error has occured. Please file an issue with the logs should the problem persist"
+			}
+
 			break
 		}
 
 		m.setGamePodID(msg.GamePodID)
 
 		m.table, cmd = m.table.Update(msg)
-		cmds = append(cmds, cmd, m.waitForMatch(m.matchChan))
+		cmds = append(cmds, cmd, m.waitForMatch(m.matchCh))
 
-	// Apparently not supported by Windows™
+	/* Apparently not supported by Windows™
 	case tea.WindowSizeMsg:
 		width, _ := msg.Width, msg.Height
 		m.table.Resize(width)
+	*/
 
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.Quit):
-			log.Println("Program exited")
+			log.Println("valorank: Program exited")
 			cmds = append(cmds, tea.Quit)
 		case key.Matches(msg, DefaultKeyMap.Refresh):
-			log.Println("Manually refreshed")
 			if m.client.State != models.OFFLINE {
-				m.showRefresh(true)
+				log.Println("valorank: Manually refreshed")
+				m.content = fetchPlayerStr
 				go m.client.GetMatch()
 			}
 		}
@@ -94,7 +109,7 @@ func (m *model) GameState() {
 	var lockfileViable bool
 
 	sendState := func(state bool) {
-		log.Printf("Lockfile present: %t\n", state)
+		log.Printf("valorank: Lockfile present: %t\n", state)
 
 		lockfileViable = state
 		m.applicationStateChan <- state
@@ -130,4 +145,8 @@ func (m *model) GameState() {
 
 	<-done
 	watcher.Close()
+}
+
+func Init() {
+	
 }

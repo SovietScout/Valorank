@@ -12,6 +12,7 @@ type model struct {
 	client               *client.Client
 	stateCh              chan (models.State)
 	matchCh              chan (models.Match)
+	initCh               chan (struct{})
 	applicationStateChan chan (bool)
 	content              string
 	table                playertable.Model
@@ -35,6 +36,7 @@ func NewModel() *model {
 		client:               client.NewClient(stateCh, matchCh),
 		stateCh:              stateCh,
 		matchCh:              matchCh,
+		initCh:               make(chan struct{}),
 		applicationStateChan: make(chan bool),
 		content:              initializingStr,
 		table:                playertable.New(),

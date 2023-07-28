@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sovietscout/valorank/pkg/client/local"
+	"github.com/sovietscout/valorank/pkg/local"
 	"github.com/sovietscout/valorank/pkg/models"
 )
 

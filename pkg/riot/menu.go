@@ -5,18 +5,24 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/sovietscout/valorank/pkg/local"
 	"github.com/sovietscout/valorank/pkg/models"
 )
 
-type Menu struct{}
+type Menu struct{
+	sync.Mutex
+}
 
 func (r *Menu) GetMatch() models.Match {
+	r.Lock()
+	defer r.Unlock()
+
 	match := models.Match{State: models.MENU}
 
 	UserPartyID := getUserPartyID()
 
 	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/parties/"+UserPartyID), nil)
-	req.Header = Local.GetRiotHeaders()
+	req.Header = local.Client.GetRiotHeaders()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -63,14 +69,13 @@ func (r *Menu) GetMatch() models.Match {
 	}
 
 	SetNames(match.Players)
-	SetSort(match.Players)
 
 	return match
 }
 
 func getUserPartyID() string {
 	req, _ := http.NewRequest(http.MethodGet, GetGLZURL("/parties/v1/players/"+UserPUUID), nil)
-	req.Header = Local.GetRiotHeaders()
+	req.Header = local.Client.GetRiotHeaders()
 
 	resp, err := client.Do(req)
 	if err != nil {

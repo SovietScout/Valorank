@@ -2,23 +2,28 @@ package content
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
 func SetContent() {
-	ClientVersion = getClientVersion()
+	if version, err := getClientVersion(); err == nil {
+		ClientVersion = version
+	} else {
+		log.Println("There has been an error setting ClientVersion:", err)
+	}
 }
 
-func getClientVersion() string {
+func getClientVersion() (string, error) {
 	ver, err := http.Get("https://valorant-api.com/v1/version")
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	verData := new(VersionResp)
 	json.NewDecoder(ver.Body).Decode(verData)
 
-	return verData.Data.RiotClientVersion
+	return verData.Data.RiotClientVersion, nil
 }
 
 type VersionResp struct {

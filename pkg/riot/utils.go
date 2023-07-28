@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sovietscout/valorank/pkg/client/local"
+	"github.com/sovietscout/valorank/pkg/local"
 	"github.com/sovietscout/valorank/pkg/content"
 	"github.com/sovietscout/valorank/pkg/models"
 )
