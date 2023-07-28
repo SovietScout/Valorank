@@ -7,7 +7,7 @@ import (
 
 const (
 	NAME    = "Valorank"
-	VERSION = "v1.0" // β
+	VERSION = "v1.0.1β" // β
 	AUTHOR  = "SovietScout"
 )
 
@@ -186,6 +186,8 @@ var (
 		"a3bfb853-43b2-7238-a4f1-ad90e9e46bcc": {Name: "Reyna", Colour: "#b565b5"},
 		"8e253930-4c05-31dd-1b6c-968525494517": {Name: "Omen", Colour: "#47508f"},
 		"add6443a-41bd-e414-f6ad-e58d267f4e95": {Name: "Jett", Colour: "#9adeff"},
+		"e370fa57-4757-3604-3648-499e1f642d3f": {Name: "Gekko", Colour: "#c7f458"},
+		"cc8b64c8-4b25-4ff9-6e7f-37b4da43d235": {Name: "Deadlock", Colour: "#6677b0"},
 		// "": 									{Name: "Unknown", Colour: "#646464"},
 	}
 
@@ -222,15 +224,11 @@ var (
 
 	p = termenv.ColorProfile()
 
-	// Name Colours
-	teamColour = p.Color("#4c97ed")
-	oppColour  = p.Color("#ee4d4d")
-
 	// State Colours
 	offlineColour = p.Color("#ffffff")
 	menuColour    = p.Color("#67ed4c")
 	pregameColour = p.Color("#eef136")
-	ingameColour  = p.Color("#67ed4c")
+	ingameColour  = p.Color("#f12727")
 
 	ClientPlatform = "ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjog" +
 		"IldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5" +
@@ -256,9 +254,9 @@ func AgentFromID(AgentID string) *Data {
 func StyleAgent(agent *Data) string {
 	if agent != nil {
 		return termenv.String(agent.Name).Foreground(p.Color(agent.Colour)).String()
-	} else {
-		return ""
 	}
+
+	return ""
 }
 
 func RankFromID(RankID int) string {
@@ -270,15 +268,19 @@ func ServerFromGamePod(gamePod string) string {
 	return gamePodStrings[gamePod]
 }
 
+/*
 func ColourFromPlayer(player *models.Player) string {
 	name := termenv.String(player.Name)
 
-	if player.Ally {
+	if player.SubjectID == riot.UserPUUID {
+		return name.Foreground(userColour).String()
+	} else if player.Ally {
 		return name.Foreground(teamColour).String()
 	}
 
 	return name.Foreground(oppColour).String()
 }
+*/
 
 func ColourFromState(state models.State) string {
 	s := termenv.String(string(state))
