@@ -186,6 +186,7 @@ var (
 		"a3bfb853-43b2-7238-a4f1-ad90e9e46bcc": {Name: "Reyna", Colour: "#b565b5"},
 		"8e253930-4c05-31dd-1b6c-968525494517": {Name: "Omen", Colour: "#47508f"},
 		"add6443a-41bd-e414-f6ad-e58d267f4e95": {Name: "Jett", Colour: "#9adeff"},
+		"95b78ed7-4637-86d9-7e41-71ba8c293152": {Name: "Harbor", Colour: "#11434e"},
 		"e370fa57-4757-3604-3648-499e1f642d3f": {Name: "Gekko", Colour: "#c7f458"},
 		"cc8b64c8-4b25-4ff9-6e7f-37b4da43d235": {Name: "Deadlock", Colour: "#6677b0"},
 		// "": 									{Name: "Unknown", Colour: "#646464"},

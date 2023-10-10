@@ -32,6 +32,7 @@ func (r *Pregame) GetMatch() models.Match {
 		match.Err = err
 		return match
 	}
+	defer respID.Body.Close()
 
 	dataID := new(GameFetchPlayerResp)
 	json.NewDecoder(respID.Body).Decode(dataID)
