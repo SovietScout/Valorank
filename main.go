@@ -25,6 +25,7 @@ func main() {
 	log.SetOutput(io.Discard)
 
 	if *debug {
+		// Replace with custom slog handler
 		logsFolder := filepath.Join(".", "logs")
 
 		if err := os.MkdirAll(logsFolder, os.ModePerm); err != nil {
@@ -42,10 +43,12 @@ func main() {
 		defer f.Close()
 	}
 
-	termenv.SetWindowTitle(content.NAME + " by " + content.AUTHOR)
+	// Create custom output and set window title
+	output := termenv.NewOutput(os.Stdout, termenv.WithColorCache(true))
+	output.SetWindowTitle(content.NAME + " by " + content.AUTHOR)
 
-	p := tea.NewProgram(valorank.NewModel(), tea.WithAltScreen())
-	if err := p.Start(); err != nil {
+	p := tea.NewProgram(valorank.NewModel(), tea.WithAltScreen(), tea.WithOutput(output))
+	if _, err := p.Run(); err != nil {
 		log.Fatalln("fatal: ", err)
 	}
 }
